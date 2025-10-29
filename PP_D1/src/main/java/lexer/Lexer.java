@@ -1,3 +1,4 @@
+
 package lexer;
 
 import lexer.token.Token;
@@ -32,8 +33,6 @@ public class Lexer {
             Map.entry("ili", TokenType.OR),
             Map.entry("brew", TokenType.WHILE),
             Map.entry("cork", TokenType.BREAK),
-
-
             Map.entry("function", TokenType.FUNCTION),
             Map.entry("if", TokenType.IF),
             Map.entry("or", TokenType.OR),
@@ -65,6 +64,7 @@ public class Lexer {
             case ']' -> add(TokenType.RBRACKET);
             case ',' -> add(TokenType.SEPARATOR_COMMA);
             case ':' -> add(TokenType.TYPE_COLON);
+            case ';' -> add(TokenType.NEWLINE);
             case '+' -> add(TokenType.ADD);
             case '-' -> add(sc.match('>') ? TokenType.ASSIGN : TokenType.SUBTRACT);
             case '*' -> add(TokenType.MULTIPLY);
@@ -77,10 +77,9 @@ public class Lexer {
                 if (sc.match('=')) add(TokenType.NEQ);
                 else throw error("Unexpected '!'");
             }
-            case '\n' -> tokens.add(new Token(
-                    TokenType.NEWLINE, "\n", null, sc.getStartLine(), sc.getStartCol(), sc.getStartCol()
-            ));
-            case ' ', '\r', '\t' -> {}
+            case '"' -> string();
+            case '\'' -> character();
+            case ' ', '\r', '\t', '\n' -> {}
             default -> {
                 if (Character.isDigit(c)) number();
                 else if (isIdentStart(c)) identifier();
@@ -90,24 +89,110 @@ public class Lexer {
     }
 
     private void number() {
+
         while (Character.isDigit(sc.peek())) sc.advance();
-        String text = source.substring(sc.getStartIdx(), sc.getCur());
-        char nextChar = sc.peek();
-        if (Character.isAlphabetic(nextChar)) {
-            throw error("Error: Character in int literal");
+
+        boolean isFloatish = false;
+
+        if (sc.peek() == '.' && Character.isDigit(sc.peekNext())) {
+            isFloatish = true;
+            sc.advance();
+            while (Character.isDigit(sc.peek())) sc.advance();
         }
-        addLiteralInt(text);
+
+
+        if ((sc.peek() == 'e' || sc.peek() == 'E')) {
+            isFloatish = true;
+            sc.advance();
+            if (sc.peek() == '+' || sc.peek() == '-') sc.advance();
+            if (!Character.isDigit(sc.peek())) throw error("Malformed exponent in number");
+            while (Character.isDigit(sc.peek())) sc.advance();
+        }
+
+
+        char suffix = sc.peek();
+        if (suffix == 'l' || suffix == 'L') {
+            sc.advance();
+            String text = source.substring(sc.getStartIdx(), sc.getCur());
+            addLiteralLong(text);
+            return;
+        } else if (suffix == 'f' || suffix == 'F') {
+            sc.advance();
+            String text = source.substring(sc.getStartIdx(), sc.getCur());
+            addLiteralFloat(text);
+            return;
+        } else if (suffix == 'd' || suffix == 'D') {
+            sc.advance();
+            String text = source.substring(sc.getStartIdx(), sc.getCur());
+            addLiteralDouble(text);
+            return;
+        }
+
+        String text = source.substring(sc.getStartIdx(), sc.getCur());
+        if (isFloatish) addLiteralDouble(text);
+        else addLiteralInt(text);
     }
 
     private void identifier() {
         while (isIdentPart(sc.peek())) sc.advance();
         String text = source.substring(sc.getStartIdx(), sc.getCur());
         TokenType type = KEYWORDS.getOrDefault(text, TokenType.IDENTIFIER);
-        add(type, text);
+        if (type == TokenType.TRUE || type == TokenType.FALSE) {
+            addLiteralBool(text);
+        }  else {
+            add(type, text);
+        }
     }
 
     private boolean isIdentStart(char c) { return Character.isLetter(c) || c == '_'; }
     private boolean isIdentPart(char c)  { return isIdentStart(c) || Character.isDigit(c); }
+
+    private void string() {
+
+        while (!sc.isAtEnd() && sc.peek() != '"') {
+            if (sc.peek() == '\\') {
+                sc.advance();
+                if (!sc.isAtEnd()) sc.advance();
+            } else {
+                sc.advance();
+            }
+        }
+        if (sc.isAtEnd()) throw error("Unterminated string literal");
+        sc.advance();
+        String lexeme = source.substring(sc.getStartIdx(), sc.getCur());
+
+        String raw = lexeme.substring(1, lexeme.length() - 1)
+                .replace("\\n", "\n")
+                .replace("\\t", "\t")
+                .replace("\\\"", "\"")
+                .replace("\\\\", "\\");
+        tokens.add(new Token(TokenType.STRING_LIT, lexeme, raw,
+                sc.getStartLine(), sc.getStartCol(), sc.getCol() - 1));
+    }
+
+    private void character() {
+        if (sc.isAtEnd()) throw error("Unterminated char literal");
+        char value;
+        if (sc.peek() == '\\') {
+            sc.advance(); // backslash
+            if (sc.isAtEnd()) throw error("Unterminated char escape");
+            char esc = sc.advance();
+            switch (esc) {
+                case 'n' -> value = '\n';
+                case 't' -> value = '\t';
+                case '\'' -> value = '\'';
+                case '\\' -> value = '\\';
+                default -> value = esc;
+            }
+        } else {
+            value = sc.advance();
+        }
+        if (sc.peek() != '\'') throw error("Unterminated char literal");
+        sc.advance(); // closing '
+        String lexeme = source.substring(sc.getStartIdx(), sc.getCur());
+        tokens.add(new Token(TokenType.CHAR_LIT, lexeme, value,
+                sc.getStartLine(), sc.getStartCol(), sc.getCol() - 1));
+    }
 
     private void add(TokenType type) {
         String lex = source.substring(sc.getStartIdx(), sc.getCur());
@@ -125,6 +210,37 @@ public class Lexer {
                 sc.getStartLine(), sc.getStartCol(), sc.getCol() - 1));
     }
 
+    private void addLiteralLong(String literalWithSuffix) {
+        String lit = literalWithSuffix;
+        if (lit.endsWith("L") || lit.endsWith("l")) lit = lit.substring(0, lit.length() - 1);
+        tokens.add(new Token(TokenType.LONG_LIT, literalWithSuffix, Long.valueOf(lit),
+                sc.getStartLine(), sc.getStartCol(), sc.getCol() - 1));
+    }
+
+    private void addLiteralFloat(String literalWithSuffix) {
+        String lit = literalWithSuffix;
+        if (lit.endsWith("F") || lit.endsWith("f")) lit = lit.substring(0, lit.length() - 1);
+        tokens.add(new Token(TokenType.FLOAT_LIT, literalWithSuffix, Float.valueOf(lit),
+                sc.getStartLine(), sc.getStartCol(), sc.getCol() - 1));
+    }
+
+    private void addLiteralDouble(String literalWithSuffix) {
+        String lit = literalWithSuffix;
+        if (lit.endsWith("D") || lit.endsWith("d")) lit = lit.substring(0, lit.length() - 1);
+        tokens.add(new Token(TokenType.DOUBLE_LIT, literalWithSuffix, Double.valueOf(lit),
+                sc.getStartLine(), sc.getStartCol(), sc.getCol() - 1));
+    }
+
+    private void addLiteralBool(String literal) {
+        tokens.add(new Token(TokenType.BOOL_LIT, literal, Boolean.valueOf(literal),
+                sc.getStartLine(), sc.getStartCol(), sc.getCol() - 1));
+    }
+
+    private void addLiteralNull() {
+        String lex = source.substring(sc.getStartIdx(), sc.getCur());
+        tokens.add(new Token(TokenType.NULL_LIT, lex, null,
+                sc.getStartLine(), sc.getStartCol(), sc.getCol() - 1));
+    }
 
     private RuntimeException error(String msg) {
         String near = source.substring(sc.getStartIdx(), Math.min(sc.getCur(), source.length()));
