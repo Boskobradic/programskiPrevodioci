@@ -37,7 +37,8 @@ public class Lexer {
             Map.entry("if", TokenType.IF),
             Map.entry("or", TokenType.OR),
             Map.entry("else", TokenType.ELSE),
-            Map.entry("return", TokenType.RETURN)
+            Map.entry("return", TokenType.RETURN),
+            Map.entry("is", TokenType.ASSIGN)
     );
 
     public Lexer(String source) {
@@ -66,7 +67,7 @@ public class Lexer {
             case ':' -> add(TokenType.TYPE_COLON);
             case ';' -> add(TokenType.NEWLINE);
             case '+' -> add(TokenType.ADD);
-            case '-' -> add(sc.match('>') ? TokenType.ASSIGN : TokenType.SUBTRACT);
+            case '-' -> add(TokenType.SUBTRACT);
             case '*' -> add(TokenType.MULTIPLY);
             case '/' -> add(TokenType.DIVIDE);
             case '%' -> add(TokenType.PERCENT);
