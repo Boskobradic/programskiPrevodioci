@@ -42,6 +42,7 @@ public class Parser {
         if (match(TokenType.WHILE)) return whileStatement();
         if (match(TokenType.PRINT)) return printStatement();
         if (match(TokenType.RETURN)) return returnStatement();
+        if (match(TokenType.BREAK)) return breakStatement();
         return expressionStatement();
     }
 
@@ -55,7 +56,6 @@ public class Parser {
         List<Token> parameters = new ArrayList<>();
         if (!check(TokenType.RPAREN)) {
             do {
-                // Simplified parameter parsing
                 parameters.add(consumeType("Expect parameter type."));
                 parameters.add(consume(TokenType.IDENTIFIER, "Expect parameter name."));
             } while (match(TokenType.SEPARATOR_COMMA));
@@ -120,6 +120,12 @@ public class Parser {
         return new ExprStmt(expr);
     }
 
+    private Stmt breakStatement() {
+        Token keyword = previous();
+        consume(TokenType.NEWLINE, "Expect ';' after break.");
+        return new BreakStmt(keyword);
+    }
+
     private Expr expression() { return assignment(); }
 
     private Expr assignment() {
@@ -130,6 +136,8 @@ public class Parser {
             if (expr instanceof VariableExpr) {
                 Token name = ((VariableExpr) expr).name;
                 return new AssignExpr(name, value);
+            } else if (expr instanceof ArrayAccessExpr) {
+                return new AssignExpr(((VariableExpr)((ArrayAccessExpr)expr).callee).name, value);
             }
             throw error(equals, "Invalid assignment target.");
         }
@@ -137,12 +145,17 @@ public class Parser {
     }
 
     private Expr logicalOr() {
-        Expr expr = equality();
+        Expr expr = logicalAnd();
         while (match(TokenType.OR)) {
             Token operator = previous();
-            Expr right = equality();
-            expr = new BinaryExpr(expr, operator, right);
+            Expr right = logicalAnd();
+            expr = new LogicalExpr(expr, operator, right);
         }
+        return expr;
+    }
+
+    private Expr logicalAnd() {
+        Expr expr = equality();
         return expr;
     }
 
@@ -195,8 +208,15 @@ public class Parser {
 
     private Expr call() {
         Expr expr = primary();
-        if (match(TokenType.LPAREN)) {
-            expr = finishCall(expr);
+
+        while (true) {
+            if (match(TokenType.LPAREN)) {
+                expr = finishCall(expr);
+            } else if (match(TokenType.LBRACKET)) {
+                expr = finishArrayAccess(expr);
+            } else {
+                break;
+            }
         }
         return expr;
     }
@@ -212,17 +232,36 @@ public class Parser {
         return new CallExpr(callee, arguments);
     }
 
+    private Expr finishArrayAccess(Expr callee) {
+        Token bracket = previous();
+        Expr index = expression();
+        consume(TokenType.RBRACKET, "Expect ']' after array index.");
+        return new ArrayAccessExpr(callee, bracket, index);
+    }
+
     private Expr primary() {
-        if (match(TokenType.INT_LIT, TokenType.LONG_LIT, TokenType.FLOAT_LIT, TokenType.DOUBLE_LIT, TokenType.STRING_LIT, TokenType.CHAR_LIT)) return new LiteralExpr(previous().literal);
-        if (match(TokenType.TRUE, TokenType.FALSE)) return new LiteralExpr(previous().type == TokenType.TRUE);
+        if (match(TokenType.INT_LIT, TokenType.LONG_LIT, TokenType.FLOAT_LIT, TokenType.DOUBLE_LIT, TokenType.STRING_LIT, TokenType.CHAR_LIT, TokenType.BOOL_LIT)) return new LiteralExpr(previous().literal);
+        if (match(TokenType.SCAN)) return new ScanExpr(previous());
         if (match(TokenType.IDENTIFIER)) return new VariableExpr(previous());
+        if (match(TokenType.LBRACKET)) return arrayLiteral();
         if (match(TokenType.LPAREN)) {
             Expr expr = expression();
             consume(TokenType.RPAREN, "Expect ')' after expression.");
-            return new GroupingExpr(expr) {
-            };
+            return new GroupingExpr(expr);
         }
+
         throw error(peek(), "Expect expression.");
+    }
+
+    private Expr arrayLiteral() {
+        List<Expr> elements = new ArrayList<>();
+        if (!check(TokenType.RBRACKET)) {
+            do {
+                elements.add(expression());
+            } while (match(TokenType.SEPARATOR_COMMA));
+        }
+        consume(TokenType.RBRACKET, "Expect ']' after array elements.");
+        return new ArrayLiteralExpr(elements);
     }
 
     // --- HELPER METHODS ---

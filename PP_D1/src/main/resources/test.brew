@@ -37,7 +37,7 @@ pub main()
 
 
 
-    function ale add(ale a, ale b)
+    function add ale(ale a, ale b)
         ale res is a + b;
         cheers res;
 
