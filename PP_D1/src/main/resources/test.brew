@@ -1,11 +1,16 @@
-pub main()
+function ale add(ale a, ale b)
+{
+        ale res is a + b;
+        cheers res;
+}
 
+pub main()
+{
     ale x is 42;
     ale y is 8;
     lager f is 3.5;
     glass ch is 'A';
     malt flag is helles;
-
 
     ale sum is x + y;
     sum is sum + 10;
@@ -23,26 +28,23 @@ pub main()
     pour nums[2];
 
 
-    bottle (sum > 50)
+    bottle (sum > 50){
         pour "big";
-     tap
+    }
+    tap{
         pour "small";
-
+    }
 
 
     ale i is 0;
-    brew (i < 3)
+    brew (i < 3){
         pour i;
         i is i + 1;
-
-
-
-    function add ale(ale a, ale b)
-        ale res is a + b;
-        cheers res;
+    }
 
 
     ale total is add(sum, y);
     pour "total=";
     pour total;
+}
 

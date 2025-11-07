@@ -71,6 +71,8 @@ public class Lexer {
             case '*' -> add(TokenType.MULTIPLY);
             case '/' -> add(TokenType.DIVIDE);
             case '%' -> add(TokenType.PERCENT);
+            case '{' -> add(TokenType.LBRACE);
+            case '}' -> add(TokenType.RBRACE);
             case '<' -> add(sc.match('=') ? TokenType.LE : TokenType.LT);
             case '>' -> add(sc.match('=') ? TokenType.GE : TokenType.GT);
             case '=' -> add(TokenType.EQ);

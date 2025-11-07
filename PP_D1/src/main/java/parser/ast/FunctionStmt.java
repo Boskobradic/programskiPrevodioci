@@ -18,6 +18,6 @@ public class FunctionStmt extends Stmt {
 
     @Override
     public String toString() {
-        return "(def " + name.lexeme + " ...)";
+        return parenthesize("def " + name.lexeme, body.toArray(new Stmt[0]));
     }
 }

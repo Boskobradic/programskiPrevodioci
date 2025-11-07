@@ -11,6 +11,7 @@ public class Parser {
     private static class ParseError extends RuntimeException {}
     private final List<Token> tokens;
     private int current = 0;
+
     public Parser(List<Token> tokens) { this.tokens = tokens; }
 
     public List<Stmt> parse() {
@@ -43,11 +44,46 @@ public class Parser {
         if (match(TokenType.PRINT)) return printStatement();
         if (match(TokenType.RETURN)) return returnStatement();
         if (match(TokenType.BREAK)) return breakStatement();
+        if (match(TokenType.LBRACE)) return blockStatement();
         return expressionStatement();
     }
 
+    private Stmt blockStatement() {
+        List<Stmt> statements = new ArrayList<>();
+        while (!check(TokenType.RBRACE) && !isAtEnd()) {
+            statements.add(declarationOrStatement());
+        }
+        consume(TokenType.RBRACE, "Expect '}' after block.");
+        return new BlockStmt(statements);
+    }
+
     private Stmt function(String kind) {
-        Token name = consume(TokenType.IDENTIFIER, "Expect " + kind + " name.");
+        Token returnType = null;
+        if (!kind.equals("main")) {
+            returnType = consumeType("Expect return type after 'function'.");
+        }
+        Token name = consume(TokenType.IDENTIFIER, "Expect " + kind + " name after return type.");
+
+        consume(TokenType.LPAREN, "Expect '(' after function name.");
+        List<Token> parameters = new ArrayList<>();
+        if (!check(TokenType.RPAREN)) {
+            do {
+                parameters.add(consumeType("Expect parameter type."));
+                parameters.add(consume(TokenType.IDENTIFIER, "Expect parameter name."));
+            } while (match(TokenType.SEPARATOR_COMMA));
+        }
+        consume(TokenType.RPAREN, "Expect ')' after parameters.");
+
+        consume(TokenType.LBRACE, "Expect '{' before function body.");
+        List<Stmt> body = new ArrayList<>();
+        while (!check(TokenType.RBRACE) && !isAtEnd()) {
+            body.add(declarationOrStatement());
+        }
+        consume(TokenType.RBRACE, "Expect '}' after function body.");
+
+        return new FunctionStmt(name, returnType, parameters, body);
+        /*Token name = consume(TokenType.IDENTIFIER, "Expect " + kind + "
+        name.");
         Token returnType = null;
         if (!kind.equals("main")) {
             returnType = consumeType("Expect return type for function.");
@@ -62,21 +98,25 @@ public class Parser {
         }
         consume(TokenType.RPAREN, "Expect ')' after parameters.");
 
+        consume(TokenType.LBRACE, "Expect '{' before function body.");
         List<Stmt> body = new ArrayList<>();
-        while(!isAtEnd() && !check(TokenType.FUNCTION) && !check(TokenType.MAIN)) {
+        while (!check(TokenType.RBRACE) && !isAtEnd()) {
             body.add(declarationOrStatement());
         }
-        return new FunctionStmt(name, returnType, parameters, body);
+        consume(TokenType.RBRACE, "Expect '}' after function body.");
+
+        return new FunctionStmt(name, returnType, parameters, body);*/
     }
 
     private Stmt ifStatement() {
         consume(TokenType.LPAREN, "Expect '(' after 'if'.");
         Expr condition = expression();
         consume(TokenType.RPAREN, "Expect ')' after if condition.");
-        Stmt thenBranch = declarationOrStatement();
+
+        Stmt thenBranch = statement();
         Stmt elseBranch = null;
         if (match(TokenType.ELSE)) {
-            elseBranch = declarationOrStatement();
+            elseBranch = statement();
         }
         return new IfStmt(condition, thenBranch, elseBranch);
     }
@@ -85,14 +125,14 @@ public class Parser {
         consume(TokenType.LPAREN, "Expect '(' after 'while'.");
         Expr condition = expression();
         consume(TokenType.RPAREN, "Expect ')' after while condition.");
-        Stmt body = declarationOrStatement();
+        Stmt body = statement();
         return new WhileStmt(condition, body);
     }
 
     private Stmt returnStatement() {
         Token keyword = previous();
         Expr value = null;
-        if (!check(TokenType.NEWLINE)) {
+        if (!check(TokenType.NEWLINE) && !check(TokenType.RBRACE)) {
             value = expression();
         }
         consume(TokenType.NEWLINE, "Expect ';' after return value.");
@@ -249,7 +289,6 @@ public class Parser {
             consume(TokenType.RPAREN, "Expect ')' after expression.");
             return new GroupingExpr(expr);
         }
-
         throw error(peek(), "Expect expression.");
     }
 
@@ -308,11 +347,6 @@ public class Parser {
 
     private Token peek() {
         return tokens.get(current);
-    }
-
-    private Token peekNext() {
-        if (current + 1 >= tokens.size()) return tokens.get(tokens.size() - 1);
-        return tokens.get(current + 1);
     }
 
     private Token previous() {
