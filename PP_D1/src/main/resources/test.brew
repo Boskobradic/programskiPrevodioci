@@ -1,46 +1,48 @@
-pub main
-    // simple vars
+pub main()
+
     ale x is 42;
     ale y is 8;
     lager f is 3.5;
     glass ch is 'A';
     malt flag is helles;
 
-    // arithmetic and reassign
+
     ale sum is x + y;
     sum is sum + 10;
 
-    // print values
+
     pour "x="; pour x;
     pour "sum="; pour sum;
     pour "f="; pour f;
     pour "ch="; pour ch;
     pour "flag="; pour flag;
 
-    // arrays
-    barrel nums is [1, 2, 3, 4];
-    pour "nums[2]="; pour nums[2];
 
-    // if / else
+    barrel nums is [1, 2, 3, 4];
+    pour "nums[2]=";
+    pour nums[2];
+
+
     bottle (sum > 50)
         pour "big";
      tap
         pour "small";
 
 
-    // while loop
+
     ale i is 0;
     brew (i < 3)
         pour i;
         i is i + 1;
 
 
-    // function and call
+
     function ale add(ale a, ale b)
         ale res is a + b;
         cheers res;
 
 
     ale total is add(sum, y);
-    pour "total="; pour total;
+    pour "total=";
+    pour total;
 

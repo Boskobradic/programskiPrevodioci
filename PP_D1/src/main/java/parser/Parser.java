@@ -9,53 +9,103 @@ import java.util.List;
 
 public class Parser {
     private static class ParseError extends RuntimeException {}
-
     private final List<Token> tokens;
     private int current = 0;
-
-    public Parser(List<Token> tokens) {
-        this.tokens = tokens;
-    }
+    public Parser(List<Token> tokens) { this.tokens = tokens; }
 
     public List<Stmt> parse() {
         List<Stmt> statements = new ArrayList<>();
         while (!isAtEnd()) {
-            if (match(TokenType.NEWLINE)) continue;
-            statements.add(declaration());
+            statements.add(topLevelDeclaration());
         }
         return statements;
     }
 
-    private Stmt declaration() {
+    private Stmt topLevelDeclaration() {
         try {
-            if (peek().type == TokenType.IDENTIFIER && isType(peekNext().type)) {
-                return varDeclaration();
-            }
-            return statement();
+            if (match(TokenType.FUNCTION)) return function("function");
+            if (match(TokenType.MAIN)) return function("main");
+            return declarationOrStatement();
         } catch (ParseError error) {
             synchronize();
             return null;
         }
     }
 
-    private Stmt varDeclaration() {
-        Token name = consume(TokenType.IDENTIFIER, "Expect variable name.");
-        Token type = consumeType("Expect type name after variable name.");
-
-        Expr initializer = null;
-        if (match(TokenType.ASSIGN)) {
-            initializer = expression();
-        }
-
-        consume(TokenType.NEWLINE, "Expect ';' after variable declaration or assignment.");
-        return new VarDeclStmt(name, type, initializer);
+    private Stmt declarationOrStatement() {
+        if (isType(peek().type)) return varDeclaration();
+        return statement();
     }
 
     private Stmt statement() {
-        if (match(TokenType.PRINT)) {
-            return printStatement();
+        if (match(TokenType.IF)) return ifStatement();
+        if (match(TokenType.WHILE)) return whileStatement();
+        if (match(TokenType.PRINT)) return printStatement();
+        if (match(TokenType.RETURN)) return returnStatement();
+        return expressionStatement();
+    }
+
+    private Stmt function(String kind) {
+        Token name = consume(TokenType.IDENTIFIER, "Expect " + kind + " name.");
+        Token returnType = null;
+        if (!kind.equals("main")) {
+            returnType = consumeType("Expect return type for function.");
         }
-        throw error(peek(), "Expect a statement.");
+        consume(TokenType.LPAREN, "Expect '(' after function name.");
+        List<Token> parameters = new ArrayList<>();
+        if (!check(TokenType.RPAREN)) {
+            do {
+                // Simplified parameter parsing
+                parameters.add(consumeType("Expect parameter type."));
+                parameters.add(consume(TokenType.IDENTIFIER, "Expect parameter name."));
+            } while (match(TokenType.SEPARATOR_COMMA));
+        }
+        consume(TokenType.RPAREN, "Expect ')' after parameters.");
+
+        List<Stmt> body = new ArrayList<>();
+        while(!isAtEnd() && !check(TokenType.FUNCTION) && !check(TokenType.MAIN)) {
+            body.add(declarationOrStatement());
+        }
+        return new FunctionStmt(name, returnType, parameters, body);
+    }
+
+    private Stmt ifStatement() {
+        consume(TokenType.LPAREN, "Expect '(' after 'if'.");
+        Expr condition = expression();
+        consume(TokenType.RPAREN, "Expect ')' after if condition.");
+        Stmt thenBranch = declarationOrStatement();
+        Stmt elseBranch = null;
+        if (match(TokenType.ELSE)) {
+            elseBranch = declarationOrStatement();
+        }
+        return new IfStmt(condition, thenBranch, elseBranch);
+    }
+
+    private Stmt whileStatement() {
+        consume(TokenType.LPAREN, "Expect '(' after 'while'.");
+        Expr condition = expression();
+        consume(TokenType.RPAREN, "Expect ')' after while condition.");
+        Stmt body = declarationOrStatement();
+        return new WhileStmt(condition, body);
+    }
+
+    private Stmt returnStatement() {
+        Token keyword = previous();
+        Expr value = null;
+        if (!check(TokenType.NEWLINE)) {
+            value = expression();
+        }
+        consume(TokenType.NEWLINE, "Expect ';' after return value.");
+        return new ReturnStmt(keyword, value);
+    }
+
+    private Stmt varDeclaration() {
+        Token type = consumeType("Expect type name for declaration.");
+        Token name = consume(TokenType.IDENTIFIER, "Expect variable name after type.");
+        Expr initializer = null;
+        if (match(TokenType.ASSIGN)) { initializer = expression(); }
+        consume(TokenType.NEWLINE, "Expect ';' after variable declaration.");
+        return new VarDeclStmt(name, type, initializer);
     }
 
     private Stmt printStatement() {
@@ -64,23 +114,114 @@ public class Parser {
         return new PrintStmt(value);
     }
 
-    private Expr expression() {
-        return primary();
+    private Stmt expressionStatement() {
+        Expr expr = expression();
+        consume(TokenType.NEWLINE, "Expect ';' after expression.");
+        return new ExprStmt(expr);
+    }
+
+    private Expr expression() { return assignment(); }
+
+    private Expr assignment() {
+        Expr expr = logicalOr();
+        if (match(TokenType.ASSIGN)) {
+            Token equals = previous();
+            Expr value = assignment();
+            if (expr instanceof VariableExpr) {
+                Token name = ((VariableExpr) expr).name;
+                return new AssignExpr(name, value);
+            }
+            throw error(equals, "Invalid assignment target.");
+        }
+        return expr;
+    }
+
+    private Expr logicalOr() {
+        Expr expr = equality();
+        while (match(TokenType.OR)) {
+            Token operator = previous();
+            Expr right = equality();
+            expr = new BinaryExpr(expr, operator, right);
+        }
+        return expr;
+    }
+
+    private Expr equality() {
+        Expr expr = comparison();
+        while (match(TokenType.NEQ, TokenType.EQ)) {
+            Token operator = previous();
+            Expr right = comparison();
+            expr = new BinaryExpr(expr, operator, right);
+        }
+        return expr;
+    }
+
+    private Expr comparison() {
+        Expr expr = addition();
+        while (match(TokenType.GT, TokenType.GE, TokenType.LT, TokenType.LE)) {
+            Token operator = previous();
+            Expr right = addition();
+            expr = new BinaryExpr(expr, operator, right);
+        }
+        return expr;
+    }
+
+    private Expr addition() {
+        Expr expr = multiplication();
+        while (match(TokenType.ADD, TokenType.SUBTRACT)) {
+            Token operator = previous();
+            Expr right = multiplication();
+            expr = new BinaryExpr(expr, operator, right);
+        }
+        return expr;
+    }
+
+    private Expr multiplication() {
+        Expr expr = unary();
+        while (match(TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.PERCENT)) {
+            Token operator = previous();
+            Expr right = unary();
+            expr = new BinaryExpr(expr, operator, right);
+        }
+        return expr;
+    }
+
+    private Expr unary() {
+        if (match(TokenType.SUBTRACT)) {
+            return primary();
+        }
+        return call();
+    }
+
+    private Expr call() {
+        Expr expr = primary();
+        if (match(TokenType.LPAREN)) {
+            expr = finishCall(expr);
+        }
+        return expr;
+    }
+
+    private Expr finishCall(Expr callee) {
+        List<Expr> arguments = new ArrayList<>();
+        if (!check(TokenType.RPAREN)) {
+            do {
+                arguments.add(expression());
+            } while (match(TokenType.SEPARATOR_COMMA));
+        }
+        consume(TokenType.RPAREN, "Expect ')' after arguments.");
+        return new CallExpr(callee, arguments);
     }
 
     private Expr primary() {
-        if (match(TokenType.INT_LIT, TokenType.LONG_LIT, TokenType.FLOAT_LIT, TokenType.DOUBLE_LIT, TokenType.STRING_LIT, TokenType.CHAR_LIT)) {
-            return new LiteralExpr(previous().literal);
+        if (match(TokenType.INT_LIT, TokenType.LONG_LIT, TokenType.FLOAT_LIT, TokenType.DOUBLE_LIT, TokenType.STRING_LIT, TokenType.CHAR_LIT)) return new LiteralExpr(previous().literal);
+        if (match(TokenType.TRUE, TokenType.FALSE)) return new LiteralExpr(previous().type == TokenType.TRUE);
+        if (match(TokenType.IDENTIFIER)) return new VariableExpr(previous());
+        if (match(TokenType.LPAREN)) {
+            Expr expr = expression();
+            consume(TokenType.RPAREN, "Expect ')' after expression.");
+            return new GroupingExpr(expr) {
+            };
         }
-
-        if (match(TokenType.TRUE, TokenType.FALSE)) {
-            return new LiteralExpr(previous().type == TokenType.TRUE);
-        }
-
-        if (match(TokenType.IDENTIFIER)) {
-            return new VariableExpr(previous());
-        }
-
         throw error(peek(), "Expect expression.");
     }
 
