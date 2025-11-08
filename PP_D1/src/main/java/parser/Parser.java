@@ -41,7 +41,7 @@ public class Parser {
     private Stmt statement() {
         if (match(TokenType.IF)) return ifStatement();
         if (match(TokenType.WHILE)) return whileStatement();
-        if (match(TokenType.PRINT)) return printStatement();
+        //if (match(TokenType.PRINT)) return printStatement();
         if (match(TokenType.RETURN)) return returnStatement();
         if (match(TokenType.BREAK)) return breakStatement();
         if (match(TokenType.LBRACE)) return blockStatement();
@@ -148,11 +148,11 @@ public class Parser {
         return new VarDeclStmt(name, type, initializer);
     }
 
-    private Stmt printStatement() {
+   /* private Stmt printStatement() {
         Expr value = expression();
         consume(TokenType.NEWLINE, "Expect ';' after value.");
         return new PrintStmt(value);
-    }
+    }*/
 
     private Stmt expressionStatement() {
         Expr expr = expression();
@@ -241,10 +241,13 @@ public class Parser {
 
     private Expr unary() {
         if (match(TokenType.SUBTRACT)) {
-            return primary();
+            Token operator = previous();
+            Expr right = unary();
+            return new UnaryExpr(operator, right);
         }
         return call();
     }
+
 
     private Expr call() {
         Expr expr = primary();
@@ -281,7 +284,8 @@ public class Parser {
 
     private Expr primary() {
         if (match(TokenType.INT_LIT, TokenType.LONG_LIT, TokenType.FLOAT_LIT, TokenType.DOUBLE_LIT, TokenType.STRING_LIT, TokenType.CHAR_LIT, TokenType.BOOL_LIT)) return new LiteralExpr(previous().literal);
-        if (match(TokenType.SCAN)) return new ScanExpr(previous());
+        if (match(TokenType.SCAN)) return new ScanExpr(previous(), expression());
+        if(match(TokenType.PRINT)) return new PrintExpr(expression());
         if (match(TokenType.IDENTIFIER)) return new VariableExpr(previous());
         if (match(TokenType.LBRACKET)) return arrayLiteral();
         if (match(TokenType.LPAREN)) {

@@ -6,16 +6,17 @@ function ale add(ale a, ale b)
 
 pub main()
 {
-    ale x is 42;
+    ale x is -42;
+    x is -12;
     ale y is 8;
     lager f is 3.5;
     glass ch is 'A';
     malt flag is helles;
 
-    ale sum is x + y;
+    ale sum is x - y;
     sum is sum + 10;
 
-
+    order(sum);
     pour "x="; pour x;
     pour "sum="; pour sum;
     pour "f="; pour f;
