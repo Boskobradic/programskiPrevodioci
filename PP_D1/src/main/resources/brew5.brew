@@ -1,0 +1,20 @@
+function ale max(ale a, ale b)
+{
+    ale m is 0;
+    bottle (a>b){
+            m is a;
+        }
+        tap{
+            m is b;
+        }
+    cheers m;
+}
+
+pub main()
+{
+    ale x is 50;
+    ale y is 70;
+    ale m is max(x, y);
+    pour "max=";
+    pour m;
+}

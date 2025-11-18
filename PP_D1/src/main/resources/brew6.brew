@@ -1,0 +1,15 @@
+function ale sum4(ale a, ale b)
+{
+    ale s is a + b;
+    cheers s;
+}
+
+pub main()
+{
+    barrel nums is [1, 3, 5, 7];
+    pour nums[2];
+
+    ale r is sum4(nums[1], nums[3]);
+    pour "result=";
+    pour r;
+}

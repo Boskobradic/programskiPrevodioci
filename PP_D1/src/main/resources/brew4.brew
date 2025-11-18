@@ -1,0 +1,12 @@
+function glass pickLetter(ale n)
+{
+    glass c is 'Z';
+    cheers c;
+}
+
+pub main()
+{
+    glass ch is pickLetter(5);
+    pour "char=";
+    pour ch;
+}

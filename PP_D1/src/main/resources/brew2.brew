@@ -1,0 +1,13 @@
+function malt isEven(ale n)
+{
+    malt r is 2;
+    cheers r;
+}
+
+pub main()
+{
+    ale x is 10;
+    malt ok is isEven(x);
+    pour "even=";
+    pour ok;
+}

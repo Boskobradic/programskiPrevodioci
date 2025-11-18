@@ -31,7 +31,7 @@ pub main()
     pour nums[2];
 
 
-    bottle (sum > 50){
+    bottle (sum >50){
         pour "big";
     }
     tap{

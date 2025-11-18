@@ -1,0 +1,14 @@
+function lager average(ale a, ale b)
+{
+    lager m is (a + b) / 2;
+    cheers m;
+}
+
+pub main()
+{
+    ale x is 14;
+    ale y is 26;
+    lager avg is average(x, y);
+    pour "avg=";
+    pour avg;
+}
