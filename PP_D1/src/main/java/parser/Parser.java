@@ -285,7 +285,8 @@ public class Parser {
     private Expr primary() {
         if (match(TokenType.INT_LIT, TokenType.LONG_LIT, TokenType.FLOAT_LIT, TokenType.DOUBLE_LIT, TokenType.STRING_LIT, TokenType.CHAR_LIT, TokenType.BOOL_LIT)) return new LiteralExpr(previous().literal);
         if (match(TokenType.SCAN)) return new ScanExpr(previous(), expression());
-        if(match(TokenType.PRINT)) return new PrintExpr(expression());
+        if(match(TokenType.PRINT)) return new PrintExpr(expression()); //
+        // dodati da budu obavezne zagrade za print
         if (match(TokenType.IDENTIFIER)) return new VariableExpr(previous());
         if (match(TokenType.LBRACKET)) return arrayLiteral();
         if (match(TokenType.LPAREN)) {

@@ -5,6 +5,7 @@ import lexer.token.Token;
 import lexer.token.TokenFormatter;
 import parser.Parser;
 import parser.ast.Stmt;
+import parser.ast.AstPrinter;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,7 +34,7 @@ public class Application {
             List<Token> tokens = lexer.scanTokens();
             System.out.println(TokenFormatter.formatList(tokens));
 
-            System.out.println("\n--- Parser Output (AST) ---");
+            System.out.println("\n--- Parser Output ---");
             Parser parser = new Parser(tokens);
             List<Stmt> syntaxTree = parser.parse();
 
@@ -41,13 +42,16 @@ public class Application {
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
+
+            AstPrinter printer = new AstPrinter();
+
             if (!validStatements.isEmpty()) {
-                for (Stmt statement : validStatements) {
-                    System.out.println(statement.toString());
-                }
+                String formatted = printer.printAll(validStatements);
+                System.out.println(formatted);
             } else {
                 System.out.println("Parsing produced no valid statements.");
             }
+
 
         } catch (Exception e) {
             System.err.println("\nRuntime Error: " + e.getMessage());

@@ -17,9 +17,9 @@ pub main()
     sum is sum + 10;
 
     order(sum);
-    pour "x="; pour x;
-    pour "sum="; pour sum;
-    pour "f="; pour f;
+    pour ("x="); pour (x);
+    pour ("sum="); pour (sum);
+    pour "f="; pour (f);
     pour "ch="; pour ch;
     pour "flag="; pour flag;
 
