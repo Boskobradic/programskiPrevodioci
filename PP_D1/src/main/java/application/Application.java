@@ -6,6 +6,7 @@ import lexer.token.TokenFormatter;
 import parser.Parser;
 import parser.ast.Stmt;
 import parser.ast.AstPrinter;
+import preprocessor.MacroProcessor;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,8 +30,12 @@ public class Application {
         try {
             String code = Files.readString(Path.of(args[0]));
 
+            System.out.println("--- Pre-processor Running ---");
+            MacroProcessor macroProcessor = new MacroProcessor(code);
+            String processedCode = macroProcessor.process();
+
             System.out.println("--- Lexer Output ---");
-            Lexer lexer = new Lexer(code);
+            Lexer lexer = new Lexer(processedCode);
             List<Token> tokens = lexer.scanTokens();
             System.out.println(TokenFormatter.formatList(tokens));
 

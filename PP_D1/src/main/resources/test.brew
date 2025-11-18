@@ -4,12 +4,14 @@ function ale add(ale a, ale b)
         cheers res;
 }
 
+defmacro PI 3.14;
+
 pub main()
 {
     ale x is -42;
     x is -12;
     ale y is 8;
-    lager f is 3.5;
+    lager f is PI;
     glass ch is 'A';
     malt flag is helles;
 
