@@ -1,0 +1,14 @@
+function ale mul(ale x, ale y)
+{
+    ale r is x * y;
+    cheers r;
+}
+
+pub main()
+{
+    ale a is 6;
+    ale b is 7;
+    ale c is mul(a, b);
+    pour "result=";
+    pour c;
+}

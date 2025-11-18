@@ -1,0 +1,5 @@
+pub main()
+{
+    ale 123 is 5;
+    pour 123;
+}

@@ -1,0 +1,5 @@
+function ale fail3(ale x, ale y)
+{
+    ale r is x + ;
+    cheers r;
+}
